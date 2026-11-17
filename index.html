@@ -39,14 +39,18 @@
   // 1 LINK DUY NHẤT: mặc định mở trang khán giả; trọng tài bấm "Dành cho trọng tài" trong app -> vỏ app chuyển sang chế độ trọng tài.
   // Giữ tham số người dùng thêm vào link (vd ?register=1). KHÔNG có sẵn đường vào trang điều hành (admin dùng link bí mật riêng).
   function open(q) { load.style.display = 'flex'; fr.src = url + (q ? '?' + q : ''); }
-  var q0 = location.search.replace(/^\?/, ''); try { if (sessionStorage.getItem('sqnMode') === 'trongtai' && !q0) q0 = 'trongtai'; } catch (e) {}
-  open(q0);
+  function qOf(mode, giai) { return [mode === 'trongtai' ? 'trongtai' : '', giai ? 'giai=' + encodeURIComponent(giai) : ''].filter(Boolean).join('&'); }
+  var q0 = location.search.replace(/^\?/, ''); try { if (!q0) q0 = qOf(sessionStorage.getItem('sqnMode'), sessionStorage.getItem('sqnGiai') || ''); } catch (e) {}
+  open(q0); try { history.replaceState({ sqnQ: q0 }, ''); } catch (e) {}
+  window.addEventListener('popstate', function (ev) { var q = ev.state && typeof ev.state.sqnQ === 'string' ? ev.state.sqnQ : ''; open(q); });
   fr.addEventListener('load', function () { load.style.display = 'none'; });
   setTimeout(function () { load.style.display = 'none'; }, 15000);
   window.addEventListener('message', function (ev) {
     var d = ev && ev.data; if (!d || !d.sqnGo) return;
-    if (d.sqnGo === 'trongtai') { try { sessionStorage.setItem('sqnMode', 'trongtai'); } catch (e) {} open('trongtai'); }
-    else if (d.sqnGo === 'xem') { try { sessionStorage.removeItem('sqnMode'); } catch (e) {} open(''); }
+    if (!/^https:\/\/([a-z0-9-]+\.)*(googleusercontent\.com|script\.google\.com)$/.test(String(ev.origin || ''))) return; // chỉ nhận lệnh từ chính ứng dụng
+    var giai = /^[A-Za-z0-9_-]{1,40}$/.test(String(d.giai || '')) && d.giai !== 'g1' ? String(d.giai) : '', mode = d.sqnGo === 'trongtai' ? 'trongtai' : d.sqnGo === 'xem' ? 'xem' : ''; if (!mode) return;
+    try { if (mode === 'trongtai') sessionStorage.setItem('sqnMode', 'trongtai'); else sessionStorage.removeItem('sqnMode'); if (giai) sessionStorage.setItem('sqnGiai', giai); else sessionStorage.removeItem('sqnGiai'); } catch (e) {}
+    var q = qOf(mode, giai); try { history.pushState({ sqnQ: q }, ''); } catch (e) {} open(q);
   });
   var asApp = window.matchMedia('(display-mode: fullscreen)').matches || window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
   if (!asApp) document.getElementById('tip').style.display = 'block';
